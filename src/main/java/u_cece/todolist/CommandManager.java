@@ -8,60 +8,90 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import org.slf4j.Logger;
 
-import static net.minecraft.commands.Commands.*;
+import static net.minecraft.commands.Commands.argument;
+import static net.minecraft.commands.Commands.literal;
 
 public class CommandManager {
 
+    private final ToDoList toDoList = ToDoList.INSTANCE;
+    private final Logger logger = toDoList.getLogger();
+
     public CommandManager() {}
+
+    @FunctionalInterface
+    private interface CommandSourceStackAcceptor
+    {
+        void accept(CommandSourceStack source) throws Exception;
+    }
 
     public void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("todo")
-                .executes(this::displayModInfo)
+                .executes((context) -> {
+                    displayModInfo(context.getSource());
+                    return Command.SINGLE_SUCCESS;
+                })
                 .then(literal("add")
                         .then(argument("task", StringArgumentType.word())
-                                .executes(this::add)))
+                                .executes((context) -> executeServerRequest(context, this::add))))
                 .then(literal("remove")
                         .then(argument("task", StringArgumentType.word())
-                                .executes(this::remove)))
+                                .executes((context) -> executeServerRequest(context, this::remove))))
                 .then(literal("join")
                         .then(argument("task", StringArgumentType.word())
-                                .executes(this::join)))
+                                .executes((context) -> executeServerRequest(context, this::join))))
                 .then(literal("leave")
                         .then(argument("task", StringArgumentType.word())
-                                .executes(this::leave)))
+                                .executes((context) -> executeServerRequest(context, this::leave))))
                 .then(literal("info")
                         .then(argument("task", StringArgumentType.word())
-                                .executes(this::info)))
+                                .executes((context) -> executeServerRequest(context, this::info))))
                 .then(literal("modify")
                         .then(argument("task", StringArgumentType.word())
                                 .then(literal("status")
                                         .then(literal("not_started")
-                                                .executes(this::modifyStatusNotStarted))
+                                                .executes((context) -> executeServerRequest(context, this::modifyStatusNotStarted)))
                                         .then(literal("started")
-                                                .executes(this::modifyStatusStarted))
+                                                .executes((context) -> executeServerRequest(context, this::modifyStatusStarted)))
                                         .then(literal("finished")
-                                                .executes(this::modifyStatusFinished)))
+                                                .executes((context) -> executeServerRequest(context, this::modifyStatusFinished))))
                                 .then(literal("priority")
                                         .then(argument("priority", IntegerArgumentType.integer(1))
-                                                .executes(this::modifyPriority)))
+                                                .executes((context) -> executeServerRequest(context, this::modifyPriority))))
                                 .then(literal("tags")
                                         .then(literal("add")
                                                 .then(argument("tag", StringArgumentType.word())
-                                                        .executes(this::modifyTagsAdd)))
+                                                        .executes((context) -> executeServerRequest(context, this::modifyTagsAdd))))
                                         .then(literal("remove")
                                                 .then(argument("tag", StringArgumentType.word())
-                                                        .executes(this::modifyTagsRemove))))))
+                                                        .executes((context) -> executeServerRequest(context, this::modifyTagsRemove)))))))
                 .then(literal("list")
-                        .executes(this::list))
+                        .executes((context) -> executeServerRequest(context, this::listAll))
+                        .then(argument("tag", StringArgumentType.word())
+                                .executes((context) -> executeServerRequest(context, this::listTagged))))
         );
     }
 
     private static final int INFO_BORDER_COLOR = 0xB266FF;
     private static final int INFO_TEXT_COLOR = 0x66B2FF;
 
-    public int displayModInfo(CommandContext<CommandSourceStack> context) {
-        context.getSource().sendSuccess(() -> {
+    private int executeServerRequest(CommandContext<CommandSourceStack> context,
+                                     CommandSourceStackAcceptor requestFunc) {
+        new Thread(() -> {
+            CommandSourceStack source = context.getSource();
+            try {
+                requestFunc.accept(source);
+            } catch (Exception e) {
+                logger.error("Exception in server API request", e);
+                source.sendFailure(Component.literal(e.getMessage()));
+            }
+        }).start();
+        return Command.SINGLE_SUCCESS;
+    }
+
+    public void displayModInfo(CommandSourceStack source) {
+        source.sendSuccess(() -> {
             MutableComponent result = Component.empty();
             result.append(Component.literal("============ To-Do List ============\n").withColor(INFO_BORDER_COLOR));
             result.append(Component.literal("""
@@ -72,60 +102,46 @@ public class CommandManager {
             result.append(Component.literal("==================================").withColor(INFO_BORDER_COLOR));
             return result;
         }, false);
-        return Command.SINGLE_SUCCESS;
     }
 
-    public int add(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void add(CommandSourceStack source) throws Exception {
+        Thread.sleep(1000);
+        throw new Exception("meow");
     }
 
-    public int remove(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void remove(CommandSourceStack source) {
     }
 
-    public int join(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void join(CommandSourceStack source) {
     }
 
-    public int leave(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void leave(CommandSourceStack source) {
     }
 
-    public int modifyStatusNotStarted(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void modifyStatusNotStarted(CommandSourceStack source) {
     }
 
-    public int modifyStatusStarted(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void modifyStatusStarted(CommandSourceStack source) {
     }
 
-    public int modifyStatusFinished(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void modifyStatusFinished(CommandSourceStack source) {
     }
 
-    public int modifyPriority(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void modifyPriority(CommandSourceStack source) {
     }
 
-    public int modifyTagsAdd(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void modifyTagsAdd(CommandSourceStack source) {
     }
 
-    public int modifyTagsRemove(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void modifyTagsRemove(CommandSourceStack source) {
     }
 
-    public int info(CommandContext<CommandSourceStack> context) {
-        context.getSource().sendSuccess(() -> {
-            MutableComponent result = Component.empty();
-            result.append("info ");
-            result.append(StringArgumentType.getString(context, "task"));
-            return result;
-        }, false);
-        return Command.SINGLE_SUCCESS;
+    public void info(CommandSourceStack source) {
     }
 
-    public int list(CommandContext<CommandSourceStack> context) {
-        return Command.SINGLE_SUCCESS;
+    public void listAll(CommandSourceStack source) {
+    }
+
+    public void listTagged(CommandSourceStack source) {
     }
 }

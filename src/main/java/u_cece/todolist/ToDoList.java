@@ -11,13 +11,25 @@ import org.slf4j.LoggerFactory;
 public enum ToDoList {
     INSTANCE;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("to-do-list");
+    private Logger logger;
 
-    public CommandManager commandProcessor;
+    private CommandManager commandProcessor;
+    private ServerAPI serverAPI;
 
     public void init() {
+        logger = LoggerFactory.getLogger("to-do-list");
+
         commandProcessor = new CommandManager();
+        serverAPI = new ServerAPI();
         CommandRegistrationCallback.EVENT.register(this::registerCommands);
+    }
+
+    Logger getLogger() {
+        return logger;
+    }
+
+    public ServerAPI getServerAPI() {
+        return serverAPI;
     }
 
     void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher,
