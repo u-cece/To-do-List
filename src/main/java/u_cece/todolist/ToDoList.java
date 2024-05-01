@@ -13,14 +13,14 @@ public enum ToDoList {
 
     private Logger logger;
 
-    private CommandManager commandProcessor;
     private ServerAPI serverAPI;
+    private CommandManager commandProcessor;
 
     public void init() {
         logger = LoggerFactory.getLogger("to-do-list");
 
+        serverAPI = new ServerAPI("https://todo.aubrey.codes");
         commandProcessor = new CommandManager();
-        serverAPI = new ServerAPI();
         CommandRegistrationCallback.EVENT.register(this::registerCommands);
     }
 
